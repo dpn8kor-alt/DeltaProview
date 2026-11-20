@@ -25,21 +25,74 @@ class RevisionService:
         if not settings.REVISION_HISTORY_BASE_URL:
             raise ValueError("REVISION_HISTORY_BASE_URL is not configured.")
 
-        try:
-            confluence_client = ConfluenceClient()
+        confluence_client = ConfluenceClient()
+        url = self.build_history_url(page_id)
 
+        # Allow more time for Confluence to return revision history.
+        timeout = httpx.Timeout(
+            connect=10.0,
+            read=60.0,
+            write=10.0,
+            pool=10.0,
+        )
+
+        try:
             with httpx.Client(
-                timeout=settings.CONFLUENCE_TIMEOUT_SECONDS,
+                timeout=timeout,
                 verify=confluence_client.create_ssl_context(),
             ) as client:
+
+                logger.info(
+                    "Fetching revision history for page ID: %s",
+                    page_id,
+                )
+
                 response = client.get(
-                    self.build_history_url(page_id),
+                    url,
                     headers=confluence_client._auth(),
+                )
+
+                logger.info(
+                    "Revision history response status: %s",
+                    response.status_code,
                 )
 
                 response.raise_for_status()
 
-                return parse_revision_history_page(response.text)
+                revisions = parse_revision_history_page(response.text)
+
+                logger.info(
+                    "Successfully retrieved %s revisions for page %s",
+                    len(revisions),
+                    page_id,
+                )
+
+                return revisions
+
+        except httpx.ReadTimeout:
+            logger.exception(
+                "Confluence read timeout while fetching revision history "
+                "for page %s. URL: %s",
+                page_id,
+                url,
+            )
+            raise
+
+        except httpx.HTTPStatusError as exc:
+            logger.error(
+                "Confluence returned HTTP %s for page %s. Response: %s",
+                exc.response.status_code,
+                page_id,
+                exc.response.text[:2000],
+            )
+            raise
+
+        except httpx.RequestError:
+            logger.exception(
+                "Network error while fetching revision history for page %s",
+                page_id,
+            )
+            raise
 
         except Exception:
             logger.exception(
@@ -53,8 +106,8 @@ class RevisionService:
         revisions: list[dict[str, Any]],
         history_limit: int = 5,
     ) -> dict[str, Any]:
+
         # First latest=true item is published.
-        # Include at most five latest=false items in QMS response order.
         published = next(
             (
                 revision
@@ -64,6 +117,7 @@ class RevisionService:
             None,
         )
 
+        # Include at most five latest=false items.
         history = [
             revision
             for revision in revisions

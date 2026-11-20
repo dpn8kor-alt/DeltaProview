@@ -1,14 +1,15 @@
+
 /* =========================================================
    DELTAPROVIEW - BOSCH DESIGN SYSTEM
    Main Application Styling
    ========================================================= */
 
 :root {
-  --bosch-blue: #005691;
+  --bosch-blue: #007BC0;
   --bosch-blue-dark: #003b6f;
-  --bosch-blue-hover: #004578;
-  --bosch-blue-light: #eaf3f9;
-  --bosch-red: #e20015;
+  --bosch-blue-hover: #0066A3;
+  --bosch-blue-light: #EAF5FB;
+  --bosch-red: #003b6f;
 
   --text-primary: #202c38;
   --text-secondary: #5f6b76;
@@ -25,7 +26,7 @@
   --error: #c62828;
   --error-bg: #fff1f0;
 
-  --info: #005691;
+  --info: #007BC0;
   --info-bg: #edf5fb;
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -47,11 +48,10 @@
   background: var(--background);
   color: var(--text-primary);
 }
-
 .header-inner,
 .footer-inner,
 .main-content {
-  width: min(1320px, calc(100% - 64px));
+  width: min(1440px, calc(100% - 40px));
   margin: 0 auto;
 }
 
@@ -78,6 +78,8 @@
   align-items: center;
   gap: 28px;
   padding: 14px 0;
+  width: min(1440px, calc(100% - 40px));
+  margin: 0 auto;
 }
 
 .brand-section {
@@ -87,12 +89,15 @@
   min-width: 0;
 }
 
-.bosch-brand {
-  font-size: 1.65rem;
-  font-weight: 800;
-  letter-spacing: 0.13em;
-  color: #ffffff;
-  white-space: nowrap;
+/* Bosch Logo */
+
+.bosch-logo {
+  display: block;
+  width: 150px;
+  height: auto;
+  max-height: 75px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .brand-divider {
@@ -128,6 +133,35 @@
   gap: 18px;
 }
 
+/* Bosch Header Line */
+
+.bosch-header-line {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.bosch-header-line img {
+  display: block;
+  width: 100%;
+  height: 8px;
+  object-fit: fill;
+}
+
+/* =========================================================
+   CUSTOM IMAGE ICONS
+   ========================================================= */
+
+.button-icon {
+  display: inline-block;
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
 /* =========================================================
    MAIN NAVIGATION
    ========================================================= */
@@ -143,6 +177,10 @@
 }
 
 .app-navigation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 10px 19px;
@@ -152,6 +190,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
 }
 
 .app-navigation button:hover {
@@ -216,31 +255,40 @@
 }
 
 /* =========================================================
-   RESET BUTTON
+   RESET BUTTON - IMAGE ONLY
    ========================================================= */
 
 .reset-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 9px 16px;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: #ffffff;
-  color: var(--text-primary);
-  font-size: 0.86rem;
-  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.reset-button img {
+  display: block;
+  width: 23px;
+  height: 23px;
+  object-fit: contain;
 }
 
 .reset-button:hover {
   border-color: var(--bosch-blue);
-  color: var(--bosch-blue);
   background: var(--bosch-blue-light);
+}
+
+.reset-button:focus-visible {
+  outline: 3px solid rgba(0, 123, 192, 0.2);
+  outline-offset: 2px;
 }
 
 /* =========================================================
@@ -373,7 +421,7 @@
 .form-group select:focus {
   outline: none;
   border-color: var(--bosch-blue);
-  box-shadow: 0 0 0 3px rgba(0, 86, 145, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 123, 192, 0.12);
 }
 
 .form-group select:disabled {
@@ -438,6 +486,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 42px;
   padding: 9px 17px;
   border: 1px solid var(--bosch-blue);
@@ -448,6 +497,7 @@
   font-weight: 650;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .upload-config:hover {
@@ -463,7 +513,7 @@
 }
 
 .upload-config:focus-within {
-  outline: 3px solid rgba(0, 86, 145, 0.2);
+  outline: 3px solid rgba(0, 123, 192, 0.2);
   outline-offset: 2px;
 }
 
@@ -557,7 +607,7 @@
 .revision-selected {
   border-color: var(--bosch-blue);
   background: var(--bosch-blue-light);
-  box-shadow: inset 0 0 0 1px rgba(0, 86, 145, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(0, 123, 192, 0.12);
 }
 
 .revision-selected:hover {
@@ -637,7 +687,7 @@
 
 .compare-button:hover:not(:disabled) {
   background: var(--bosch-blue-hover);
-  box-shadow: 0 3px 8px rgba(0, 86, 145, 0.2);
+  box-shadow: 0 3px 8px rgba(0, 123, 192, 0.2);
   transform: translateY(-1px);
 }
 
@@ -727,7 +777,7 @@
 button:focus-visible,
 select:focus-visible,
 input:focus-visible {
-  outline: 3px solid rgba(0, 86, 145, 0.25);
+  outline: 3px solid rgba(0, 123, 192, 0.25);
   outline-offset: 2px;
 }
 
@@ -828,8 +878,9 @@ button:disabled {
     gap: 11px;
   }
 
-  .bosch-brand {
-    font-size: 1.3rem;
+  .bosch-logo {
+    width: 85px;
+    max-height: 85px;
   }
 
   .brand-divider {
@@ -857,6 +908,12 @@ button:disabled {
     flex: 1;
     padding: 9px 10px;
     font-size: 0.8rem;
+    gap: 6px;
+  }
+
+  .button-icon {
+    width: 17px;
+    height: 17px;
   }
 
   .version-label {

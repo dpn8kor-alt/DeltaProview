@@ -1,11 +1,16 @@
+
 import { useEffect, useState } from "react";
+
 import {
   AlertCircle,
   CheckCircle2,
-  Download,
   FileSpreadsheet,
   Layers,
 } from "lucide-react";
+
+// Custom image assets
+import downloadIcon from "./assests/download.png";
+import uploadIcon from "./assests/upload.png";
 
 import {
   fetchRevisionChildPages,
@@ -14,6 +19,11 @@ import {
   generateRevisionConfig,
   uploadRevisionConfig,
 } from "./api";
+
+
+/* =========================================================
+   FILE DOWNLOAD HELPER
+   ========================================================= */
 
 function saveFile(blob, filename) {
   const url = window.URL.createObjectURL(blob);
@@ -29,8 +39,15 @@ function saveFile(blob, filename) {
   window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
 }
 
+
+/* =========================================================
+   CONFIGURATION BUILDER COMPONENT
+   ========================================================= */
+
 function ConfigBuilder({ onConfigurationUpdated }) {
+
   const [mode, setMode] = useState("revision");
+
   const [rootPages, setRootPages] = useState([]);
   const [level2Pages, setLevel2Pages] = useState([]);
   const [methodPages, setMethodPages] = useState([]);
@@ -48,12 +65,20 @@ function ConfigBuilder({ onConfigurationUpdated }) {
   const [generatedFile, setGeneratedFile] = useState(null);
   const [generatedFilename, setGeneratedFilename] = useState("");
 
+
+  /* =========================================================
+     LOAD ROOT PROCESS LANDSCAPES
+     ========================================================= */
+
   useEffect(() => {
+
     let active = true;
 
     fetchRevisionRootPages()
       .then((pages) => {
-        if (active) setRootPages(pages);
+        if (active) {
+          setRootPages(pages);
+        }
       })
       .catch((err) => {
         if (active) {
@@ -61,13 +86,21 @@ function ConfigBuilder({ onConfigurationUpdated }) {
         }
       })
       .finally(() => {
-        if (active) setLoadingPages(false);
+        if (active) {
+          setLoadingPages(false);
+        }
       });
 
     return () => {
       active = false;
     };
+
   }, []);
+
+
+  /* =========================================================
+     RESET GENERATED OUTPUT
+     ========================================================= */
 
   const resetOutput = () => {
     setGeneratedFile(null);
@@ -76,7 +109,13 @@ function ConfigBuilder({ onConfigurationUpdated }) {
     setError("");
   };
 
+
+  /* =========================================================
+     PROCESS LANDSCAPE CHANGE
+     ========================================================= */
+
   const handleRootChange = async (pageId) => {
+
     setSelectedRootId(pageId);
     setSelectedLevel2Id("");
     setSelectedMethodId("");
@@ -99,7 +138,13 @@ function ConfigBuilder({ onConfigurationUpdated }) {
     }
   };
 
+
+  /* =========================================================
+     PROCESS CHANGE
+     ========================================================= */
+
   const handleLevel2Change = async (pageId) => {
+
     setSelectedLevel2Id(pageId);
     setSelectedMethodId("");
 
@@ -120,19 +165,29 @@ function ConfigBuilder({ onConfigurationUpdated }) {
     }
   };
 
+
+  /* =========================================================
+     GENERATE REVISION CONFIGURATION
+     ========================================================= */
+
   const handleRevisionConfig = async () => {
+
     const selectedMethod = methodPages.find(
       (page) => String(page.id) === selectedMethodId
     );
 
     const pages = selectedMethod
-      ? [{ id: String(selectedMethod.id), title: selectedMethod.title }]
+      ? [{
+          id: String(selectedMethod.id),
+          title: selectedMethod.title
+        }]
       : [];
 
     setWorking(true);
     resetOutput();
 
     try {
+
       const blob = await generateRevisionConfig(pages);
 
       const file = new File([blob], "revision-config.xml", {
@@ -149,37 +204,56 @@ function ConfigBuilder({ onConfigurationUpdated }) {
       );
 
       onConfigurationUpdated?.();
+
     } catch (err) {
+
       setError(
         err.message ||
-          "Could not create or activate the revision configuration."
+        "Could not create or activate the revision configuration."
       );
+
     } finally {
       setWorking(false);
     }
   };
 
+
+  /* =========================================================
+     GENERATE COMPASS CONFIGURATION
+     ========================================================= */
+
   const handleCompassConfig = async () => {
+
     setWorking(true);
     resetOutput();
 
     try {
+
       const blob = await generateCompassConfig([selectedLevel2Id]);
 
       setGeneratedFile(blob);
       setGeneratedFilename("Confluence_Page_Config.xml");
 
       setNotice("Compass configuration is ready to download.");
+
     } catch (err) {
+
       setError(
         err.message || "Could not generate the Compass configuration."
       );
+
     } finally {
       setWorking(false);
     }
   };
 
+
+  /* =========================================================
+     UPLOAD REVISION CONFIGURATION
+     ========================================================= */
+
   const handleUpload = async (event) => {
+
     const file = event.target.files?.[0];
 
     event.target.value = "";
@@ -190,6 +264,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
     resetOutput();
 
     try {
+
       const result = await uploadRevisionConfig(file);
 
       setNotice(
@@ -197,37 +272,64 @@ function ConfigBuilder({ onConfigurationUpdated }) {
       );
 
       onConfigurationUpdated?.();
+
     } catch (err) {
+
       setError(
         err.message || "Could not upload the revision configuration."
       );
+
     } finally {
       setWorking(false);
     }
   };
+
+
+  /* =========================================================
+     CHANGE CONFIGURATION MODE
+     ========================================================= */
 
   const changeMode = (nextMode) => {
     setMode(nextMode);
     resetOutput();
   };
 
+
+  /* =========================================================
+     UI
+     ========================================================= */
+
   return (
+
     <div className="config-builder">
+
+      {/* PAGE HEADING */}
+
       <div className="page-heading">
+
         <div>
-          <div className="eyebrow">CREATE REVISION CONFIG</div>
+          <div className="eyebrow">
+            CREATE REVISION CONFIG
+          </div>
+
           <h2>Configuration Tools</h2>
+
           <p>
             Generate revision history or Compass page-tree XML.
           </p>
         </div>
+
       </div>
+
+
+      {/* WORKFLOW TABS */}
 
       <div
         className="workflow-tabs"
         role="tablist"
         aria-label="Configuration type"
       >
+
         <button
           type="button"
           className={`workflow-tab ${
@@ -251,26 +353,41 @@ function ConfigBuilder({ onConfigurationUpdated }) {
         >
           Compass page tree
         </button>
+
       </div>
 
+
+      {/* PROCESS SELECTION */}
+
       <section className="content-card config-card">
+
         <div className="section-heading">
+
           <div className="section-icon">
             <Layers size={20} />
           </div>
 
           <div>
             <h3>Process Selection</h3>
+
             <p>
               {mode === "revision"
                 ? "Choose methods to include in revision history."
                 : "Choose a process to build its Compass page tree."}
             </p>
           </div>
+
         </div>
 
+
+        {/* SELECTION DROPDOWNS */}
+
         <div className="selection-grid config-selection-grid">
+
+          {/* PROCESS LANDSCAPE */}
+
           <div className="form-group">
+
             <label htmlFor="root-page">
               Process Landscape
             </label>
@@ -283,6 +400,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
               }
               disabled={loadingPages && rootPages.length === 0}
             >
+
               <option value="">
                 {loadingPages && rootPages.length === 0
                   ? "Loading..."
@@ -294,10 +412,16 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                   {page.title}
                 </option>
               ))}
+
             </select>
+
           </div>
 
+
+          {/* PROCESS */}
+
           <div className="form-group">
+
             <label htmlFor="level2-page">
               Process
             </label>
@@ -310,6 +434,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
               }
               disabled={!selectedRootId || loadingPages}
             >
+
               <option value="">
                 -- Select Process --
               </option>
@@ -319,11 +444,18 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                   {page.title}
                 </option>
               ))}
+
             </select>
+
           </div>
 
+
+          {/* METHOD */}
+
           {mode === "revision" && (
+
             <div className="form-group">
+
               <label htmlFor="method-page">
                 Method
               </label>
@@ -337,6 +469,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                 }}
                 disabled={!selectedLevel2Id || loadingPages}
               >
+
                 <option value="">
                   {!selectedLevel2Id
                     ? "-- Select Process First --"
@@ -350,49 +483,85 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                     {page.title}
                   </option>
                 ))}
+
               </select>
+
             </div>
+
           )}
+
         </div>
 
+
+        {/* CONNECTION NOTICE */}
+
         {!loadingPages && rootPages.length === 0 && (
+
           <div className="connection-notice">
+
             <AlertCircle size={17} />
 
             <span>
               Could not load process landscapes. Check the backend
               connection and Confluence settings.
             </span>
+
           </div>
+
         )}
 
+
+        {/* LOADING STATUS */}
+
         {loadingPages && (
+
           <div className="config-loading">
             Loading process information...
           </div>
+
         )}
 
+
+        {/* CONFIGURATION ACTIONS */}
+
         <div className="config-actions">
+
           {mode === "revision" ? (
+
             <>
+
+              {/* GENERATE REVISION CONFIG */}
+
               <button
                 type="button"
                 className="compare-button"
                 onClick={handleRevisionConfig}
                 disabled={!selectedMethodId || working}
               >
+
                 <FileSpreadsheet size={17} />
 
                 {working
                   ? "Generating..."
                   : "Generate and activate"}
+
               </button>
+
+
+              {/* UPLOAD XML */}
 
               <label
                 className={`upload-config ${
                   working ? "disabled" : ""
                 }`}
               >
+
+                <img
+                  src={uploadIcon}
+                  alt=""
+                  className="button-icon"
+                />
+
                 Upload XML
 
                 <input
@@ -401,24 +570,37 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                   onChange={handleUpload}
                   disabled={working}
                 />
+
               </label>
+
             </>
+
           ) : (
+
+            /* GENERATE COMPASS XML */
+
             <button
               type="button"
               className="compare-button"
               onClick={handleCompassConfig}
               disabled={!selectedLevel2Id || working}
             >
+
               <FileSpreadsheet size={17} />
 
               {working
                 ? "Generating..."
                 : "Generate Compass XML"}
+
             </button>
+
           )}
 
+
+          {/* DOWNLOAD XML */}
+
           {generatedFile && (
+
             <button
               type="button"
               className="download-button"
@@ -426,27 +608,55 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                 saveFile(generatedFile, generatedFilename)
               }
             >
-              <Download size={17} />
+
+              <img
+                src={downloadIcon}
+                alt=""
+                className="button-icon"
+              />
+
               Download XML
+
             </button>
+
           )}
+
         </div>
 
+
+        {/* ERROR MESSAGE */}
+
         {error && (
+
           <div className="error-message" role="alert">
+
             <AlertCircle size={18} />
+
             <span>{error}</span>
+
           </div>
+
         )}
 
+
+        {/* SUCCESS MESSAGE */}
+
         {notice && (
+
           <div className="success-message" role="status">
+
             <CheckCircle2 size={18} />
+
             <span>{notice}</span>
+
           </div>
+
         )}
+
       </section>
+
     </div>
+
   );
 }
 
