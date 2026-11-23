@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Layers,
+  GitBranch,
+  Upload,
 } from "lucide-react";
 
 // Custom image assets
@@ -16,7 +18,6 @@ import {
   fetchRevisionChildPages,
   fetchRevisionRootPages,
   generateCompassConfig,
-  generateRevisionConfig,
   uploadRevisionConfig,
 } from "./api";
 
@@ -36,7 +37,9 @@ function saveFile(blob, filename) {
   link.click();
   link.remove();
 
-  window.setTimeout(() => window.URL.revokeObjectURL(url), 0);
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+  }, 0);
 }
 
 
@@ -50,11 +53,9 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
   const [rootPages, setRootPages] = useState([]);
   const [level2Pages, setLevel2Pages] = useState([]);
-  const [methodPages, setMethodPages] = useState([]);
 
   const [selectedRootId, setSelectedRootId] = useState("");
   const [selectedLevel2Id, setSelectedLevel2Id] = useState("");
-  const [selectedMethodId, setSelectedMethodId] = useState("");
 
   const [loadingPages, setLoadingPages] = useState(true);
   const [working, setWorking] = useState(false);
@@ -82,7 +83,9 @@ function ConfigBuilder({ onConfigurationUpdated }) {
       })
       .catch((err) => {
         if (active) {
-          setError(err.message || "Could not load process landscapes.");
+          setError(
+            err.message || "Could not load process landscapes."
+          );
         }
       })
       .finally(() => {
@@ -118,10 +121,8 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
     setSelectedRootId(pageId);
     setSelectedLevel2Id("");
-    setSelectedMethodId("");
 
     setLevel2Pages([]);
-    setMethodPages([]);
 
     resetOutput();
 
@@ -130,11 +131,21 @@ function ConfigBuilder({ onConfigurationUpdated }) {
     setLoadingPages(true);
 
     try {
-      setLevel2Pages(await fetchRevisionChildPages(pageId));
+
+      const pages = await fetchRevisionChildPages(pageId);
+
+      setLevel2Pages(pages);
+
     } catch (err) {
-      setError(err.message || "Could not load process pages.");
+
+      setError(
+        err.message || "Could not load process pages."
+      );
+
     } finally {
+
       setLoadingPages(false);
+
     }
   };
 
@@ -143,78 +154,11 @@ function ConfigBuilder({ onConfigurationUpdated }) {
      PROCESS CHANGE
      ========================================================= */
 
-  const handleLevel2Change = async (pageId) => {
+  const handleLevel2Change = (pageId) => {
 
     setSelectedLevel2Id(pageId);
-    setSelectedMethodId("");
-
-    setMethodPages([]);
 
     resetOutput();
-
-    if (!pageId) return;
-
-    setLoadingPages(true);
-
-    try {
-      setMethodPages(await fetchRevisionChildPages(pageId));
-    } catch (err) {
-      setError(err.message || "Could not load methods.");
-    } finally {
-      setLoadingPages(false);
-    }
-  };
-
-
-  /* =========================================================
-     GENERATE REVISION CONFIGURATION
-     ========================================================= */
-
-  const handleRevisionConfig = async () => {
-
-    const selectedMethod = methodPages.find(
-      (page) => String(page.id) === selectedMethodId
-    );
-
-    const pages = selectedMethod
-      ? [{
-          id: String(selectedMethod.id),
-          title: selectedMethod.title
-        }]
-      : [];
-
-    setWorking(true);
-    resetOutput();
-
-    try {
-
-      const blob = await generateRevisionConfig(pages);
-
-      const file = new File([blob], "revision-config.xml", {
-        type: "application/xml",
-      });
-
-      const result = await uploadRevisionConfig(file);
-
-      setGeneratedFile(blob);
-      setGeneratedFilename("output.xml");
-
-      setNotice(
-        `Configuration activated for ${result.total_pages} process pages.`
-      );
-
-      onConfigurationUpdated?.();
-
-    } catch (err) {
-
-      setError(
-        err.message ||
-        "Could not create or activate the revision configuration."
-      );
-
-    } finally {
-      setWorking(false);
-    }
   };
 
 
@@ -224,26 +168,38 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
   const handleCompassConfig = async () => {
 
+    if (!selectedLevel2Id || working) return;
+
     setWorking(true);
     resetOutput();
 
     try {
 
-      const blob = await generateCompassConfig([selectedLevel2Id]);
+      const blob = await generateCompassConfig([
+        selectedLevel2Id,
+      ]);
 
       setGeneratedFile(blob);
-      setGeneratedFilename("Confluence_Page_Config.xml");
 
-      setNotice("Compass configuration is ready to download.");
+      setGeneratedFilename(
+        "Confluence_Page_Config.xml"
+      );
+
+      setNotice(
+        "Compass configuration is ready to download."
+      );
 
     } catch (err) {
 
       setError(
-        err.message || "Could not generate the Compass configuration."
+        err.message ||
+        "Could not generate the Compass configuration."
       );
 
     } finally {
+
       setWorking(false);
+
     }
   };
 
@@ -276,11 +232,14 @@ function ConfigBuilder({ onConfigurationUpdated }) {
     } catch (err) {
 
       setError(
-        err.message || "Could not upload the revision configuration."
+        err.message ||
+        "Could not upload the revision configuration."
       );
 
     } finally {
+
       setWorking(false);
+
     }
   };
 
@@ -290,7 +249,11 @@ function ConfigBuilder({ onConfigurationUpdated }) {
      ========================================================= */
 
   const changeMode = (nextMode) => {
+
+    if (working) return;
+
     setMode(nextMode);
+
     resetOutput();
   };
 
@@ -308,247 +271,135 @@ function ConfigBuilder({ onConfigurationUpdated }) {
       <div className="page-heading">
 
         <div>
+
           <div className="eyebrow">
-            CREATE REVISION CONFIG
+            CONFIGURATION
           </div>
 
           <h2>Configuration Tools</h2>
 
           <p>
-            Generate revision history or Compass page-tree XML.
+            Manage revision configuration and generate
+            Process Compass page tree files.
           </p>
+
         </div>
 
       </div>
 
 
-      {/* WORKFLOW TABS */}
-
-      <div
-        className="workflow-tabs"
-        role="tablist"
-        aria-label="Configuration type"
-      >
-
-        <button
-          type="button"
-          className={`workflow-tab ${
-            mode === "revision" ? "active" : ""
-          }`}
-          onClick={() => changeMode("revision")}
-          role="tab"
-          aria-selected={mode === "revision"}
-        >
-          Revision configuration
-        </button>
-
-        <button
-          type="button"
-          className={`workflow-tab ${
-            mode === "compass" ? "active" : ""
-          }`}
-          onClick={() => changeMode("compass")}
-          role="tab"
-          aria-selected={mode === "compass"}
-        >
-          Compass page tree
-        </button>
-
-      </div>
-
-
-      {/* PROCESS SELECTION */}
+      {/* CONFIGURATION CARD */}
 
       <section className="content-card config-card">
+
+        {/* WORKFLOW TABS */}
+
+        <div
+          className="workflow-tabs"
+          role="tablist"
+          aria-label="Configuration type"
+        >
+
+          <button
+            type="button"
+            className={`workflow-tab ${
+              mode === "revision" ? "active" : ""
+            }`}
+            onClick={() => changeMode("revision")}
+            role="tab"
+            aria-selected={mode === "revision"}
+            disabled={working}
+          >
+
+            <GitBranch size={17} />
+
+            Revision configuration
+
+          </button>
+
+
+          <button
+            type="button"
+            className={`workflow-tab ${
+              mode === "compass" ? "active" : ""
+            }`}
+            onClick={() => changeMode("compass")}
+            role="tab"
+            aria-selected={mode === "compass"}
+            disabled={working}
+          >
+
+            <Layers size={17} />
+
+            Compass page tree
+
+          </button>
+
+        </div>
+
+
+        {/* SECTION HEADING */}
 
         <div className="section-heading">
 
           <div className="section-icon">
-            <Layers size={20} />
+
+            {mode === "revision" ? (
+              <GitBranch size={20} />
+            ) : (
+              <Layers size={20} />
+            )}
+
           </div>
 
           <div>
-            <h3>Process Selection</h3>
+
+            <h3>
+              {mode === "revision"
+                ? "Revision configuration"
+                : "Process Selection"}
+            </h3>
 
             <p>
               {mode === "revision"
-                ? "Choose methods to include in revision history."
-                : "Choose a process to build its Compass page tree."}
+                ? "Upload an existing revision configuration XML file."
+                : "Choose a process to generate its Compass page tree."}
             </p>
+
           </div>
 
         </div>
 
 
-        {/* SELECTION DROPDOWNS */}
+        {/* REVISION CONFIGURATION CONTENT */}
 
-        <div className="selection-grid config-selection-grid">
+        {mode === "revision" && (
 
-          {/* PROCESS LANDSCAPE */}
+          <div className="config-mode-content">
 
-          <div className="form-group">
+            <div className="config-upload-area">
 
-            <label htmlFor="root-page">
-              Process Landscape
-            </label>
+              <div className="config-upload-icon">
 
-            <select
-              id="root-page"
-              value={selectedRootId}
-              onChange={(event) =>
-                handleRootChange(event.target.value)
-              }
-              disabled={loadingPages && rootPages.length === 0}
-            >
+                <Upload size={25} />
 
-              <option value="">
-                {loadingPages && rootPages.length === 0
-                  ? "Loading..."
-                  : "-- Select Landscape --"}
-              </option>
+              </div>
 
-              {rootPages.map((page) => (
-                <option key={page.id} value={page.id}>
-                  {page.title}
-                </option>
-              ))}
+              <div className="config-upload-text">
 
-            </select>
+                <h4>Upload revision configuration</h4>
 
-          </div>
+                <p>
+                  Select the XML configuration file to activate
+                  the revision configuration.
+                </p>
 
-
-          {/* PROCESS */}
-
-          <div className="form-group">
-
-            <label htmlFor="level2-page">
-              Process
-            </label>
-
-            <select
-              id="level2-page"
-              value={selectedLevel2Id}
-              onChange={(event) =>
-                handleLevel2Change(event.target.value)
-              }
-              disabled={!selectedRootId || loadingPages}
-            >
-
-              <option value="">
-                -- Select Process --
-              </option>
-
-              {level2Pages.map((page) => (
-                <option key={page.id} value={page.id}>
-                  {page.title}
-                </option>
-              ))}
-
-            </select>
-
-          </div>
-
-
-          {/* METHOD */}
-
-          {mode === "revision" && (
-
-            <div className="form-group">
-
-              <label htmlFor="method-page">
-                Method
-              </label>
-
-              <select
-                id="method-page"
-                value={selectedMethodId}
-                onChange={(event) => {
-                  setSelectedMethodId(event.target.value);
-                  resetOutput();
-                }}
-                disabled={!selectedLevel2Id || loadingPages}
-              >
-
-                <option value="">
-                  {!selectedLevel2Id
-                    ? "-- Select Process First --"
-                    : loadingPages
-                    ? "Loading methods..."
-                    : "-- Select Method --"}
-                </option>
-
-                {methodPages.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.title}
-                  </option>
-                ))}
-
-              </select>
+              </div>
 
             </div>
 
-          )}
 
-        </div>
-
-
-        {/* CONNECTION NOTICE */}
-
-        {!loadingPages && rootPages.length === 0 && (
-
-          <div className="connection-notice">
-
-            <AlertCircle size={17} />
-
-            <span>
-              Could not load process landscapes. Check the backend
-              connection and Confluence settings.
-            </span>
-
-          </div>
-
-        )}
-
-
-        {/* LOADING STATUS */}
-
-        {loadingPages && (
-
-          <div className="config-loading">
-            Loading process information...
-          </div>
-
-        )}
-
-
-        {/* CONFIGURATION ACTIONS */}
-
-        <div className="config-actions">
-
-          {mode === "revision" ? (
-
-            <>
-
-              {/* GENERATE REVISION CONFIG */}
-
-              <button
-                type="button"
-                className="compare-button"
-                onClick={handleRevisionConfig}
-                disabled={!selectedMethodId || working}
-              >
-
-                <FileSpreadsheet size={17} />
-
-                {working
-                  ? "Generating..."
-                  : "Generate and activate"}
-
-              </button>
-
-
-              {/* UPLOAD XML */}
+            <div className="config-actions">
 
               <label
                 className={`upload-config ${
@@ -562,7 +413,9 @@ function ConfigBuilder({ onConfigurationUpdated }) {
                   className="button-icon"
                 />
 
-                Upload XML
+                {working
+                  ? "Uploading..."
+                  : "Upload XML"}
 
                 <input
                   type="file"
@@ -573,62 +426,218 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
               </label>
 
-            </>
+            </div>
 
-          ) : (
+          </div>
 
-            /* GENERATE COMPASS XML */
-
-            <button
-              type="button"
-              className="compare-button"
-              onClick={handleCompassConfig}
-              disabled={!selectedLevel2Id || working}
-            >
-
-              <FileSpreadsheet size={17} />
-
-              {working
-                ? "Generating..."
-                : "Generate Compass XML"}
-
-            </button>
-
-          )}
+        )}
 
 
-          {/* DOWNLOAD XML */}
+        {/* COMPASS PAGE TREE CONTENT */}
 
-          {generatedFile && (
+        {mode === "compass" && (
 
-            <button
-              type="button"
-              className="download-button"
-              onClick={() =>
-                saveFile(generatedFile, generatedFilename)
-              }
-            >
+          <div className="config-mode-content">
 
-              <img
-                src={downloadIcon}
-                alt=""
-                className="button-icon"
-              />
+            <div className="selection-grid config-selection-grid">
 
-              Download XML
+              {/* PROCESS LANDSCAPE */}
 
-            </button>
+              <div className="form-group">
 
-          )}
+                <label htmlFor="root-page">
+                  Process Landscape
+                </label>
 
-        </div>
+                <select
+                  id="root-page"
+                  value={selectedRootId}
+                  onChange={(event) =>
+                    handleRootChange(event.target.value)
+                  }
+                  disabled={
+                    loadingPages && rootPages.length === 0
+                  }
+                >
+
+                  <option value="">
+
+                    {loadingPages && rootPages.length === 0
+                      ? "Loading..."
+                      : "-- Select Landscape --"}
+
+                  </option>
+
+                  {rootPages.map((page) => (
+
+                    <option
+                      key={page.id}
+                      value={page.id}
+                    >
+                      {page.title}
+                    </option>
+
+                  ))}
+
+                </select>
+
+              </div>
+
+
+              {/* PROCESS */}
+
+              <div className="form-group">
+
+                <label htmlFor="level2-page">
+                  Process
+                </label>
+
+                <select
+                  id="level2-page"
+                  value={selectedLevel2Id}
+                  onChange={(event) =>
+                    handleLevel2Change(event.target.value)
+                  }
+                  disabled={
+                    !selectedRootId || loadingPages
+                  }
+                >
+
+                  <option value="">
+                    -- Select Process --
+                  </option>
+
+                  {level2Pages.map((page) => (
+
+                    <option
+                      key={page.id}
+                      value={page.id}
+                    >
+                      {page.title}
+                    </option>
+
+                  ))}
+
+                </select>
+
+              </div>
+
+            </div>
+
+
+            {/* LOADING STATUS */}
+
+            {loadingPages && (
+
+              <div className="config-loading">
+
+                <span className="loading-spinner" />
+
+                Loading process information...
+
+              </div>
+
+            )}
+
+
+            {/* EMPTY PROCESS LANDSCAPE */}
+
+            {!loadingPages &&
+              rootPages.length === 0 && (
+
+                <div className="connection-notice">
+
+                  <AlertCircle size={17} />
+
+                  <span>
+                    Could not load process landscapes.
+                    Check the backend connection and
+                    Confluence settings.
+                  </span>
+
+                </div>
+
+              )}
+
+
+            {/* NO CHILD PROCESSES */}
+
+            {!loadingPages &&
+              selectedRootId &&
+              level2Pages.length === 0 && (
+
+                <div className="empty-state">
+
+                  No processes found for the selected
+                  Process Landscape.
+
+                </div>
+
+              )}
+
+
+            {/* GENERATE XML ACTION */}
+
+            <div className="config-actions">
+
+              <button
+                type="button"
+                className="compare-button"
+                onClick={handleCompassConfig}
+                disabled={!selectedLevel2Id || working}
+              >
+
+                <FileSpreadsheet size={17} />
+
+                {working
+                  ? "Generating..."
+                  : "Generate Compass XML"}
+
+              </button>
+
+
+              {/* DOWNLOAD GENERATED XML */}
+
+              {generatedFile && (
+
+                <button
+                  type="button"
+                  className="download-button"
+                  onClick={() =>
+                    saveFile(
+                      generatedFile,
+                      generatedFilename
+                    )
+                  }
+                >
+
+                  <img
+                    src={downloadIcon}
+                    alt=""
+                    className="button-icon"
+                  />
+
+                  Download XML
+
+                </button>
+
+              )}
+
+            </div>
+
+          </div>
+
+        )}
 
 
         {/* ERROR MESSAGE */}
 
         {error && (
 
-          <div className="error-message" role="alert">
+          <div
+            className="error-message"
+            role="alert"
+          >
 
             <AlertCircle size={18} />
 
@@ -643,7 +652,10 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
         {notice && (
 
-          <div className="success-message" role="status">
+          <div
+            className="success-message"
+            role="status"
+          >
 
             <CheckCircle2 size={18} />
 

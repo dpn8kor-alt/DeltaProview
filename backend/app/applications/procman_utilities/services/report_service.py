@@ -1,5 +1,6 @@
 
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urljoin
 import re
 
@@ -559,6 +560,7 @@ class ProcessComparisonReportService:
         published_version: str = "",
         outdated_version: str = "",
         confluence_base_url: str = "",
+        output_dir: Path | None = None,
     ) -> str:
 
         workbook = Workbook()
@@ -1131,7 +1133,7 @@ class ProcessComparisonReportService:
             f"CompReport_{safe_method}_{timestamp}.xlsx"
         )
 
-        output_path = get_temp_download_dir() / filename
+        output_path = (output_dir or get_temp_download_dir()) / filename
 
         workbook.save(output_path)
         workbook.close()

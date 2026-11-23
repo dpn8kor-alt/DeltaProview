@@ -35,8 +35,8 @@ Open `http://127.0.0.1:5173`. The API defaults to `http://127.0.0.1:8000/api/v1/
 
 ## Workflows
 
-1. **Create XML** generates and activates revision configuration; it can also upload existing XML.
-2. **Compare** selects a configured process and two revisions, then generates an Excel report.
-3. **Compass page tree** generates the separate Compass XML.
+1. Select a process and two revisions. Configured methods use their uploaded revision list; other methods use live revision history.
+2. Click **Compare** to start processing. The backend fetches content, generates and reads revision XML in memory, compares the pages, and returns the Excel workbook. Use **Download Excel** when the report is ready.
+3. **Configuration tools** still supports uploading existing revision configuration and exporting the separate Compass page tree. Neither is required for live comparisons.
 
-Generated Excel and XML files are stored in `%TEMP%\ProcessCompass`. Uploaded revision configuration remains in `output/`. Put Confluence settings in `backend/.env`; never commit credentials. Run backend tests from `backend/` with `python -m pytest`.
+Automatic reports use a request-specific temporary directory that is removed after transfer. Standalone Excel and XML endpoints retain their existing `%TEMP%\ProcessCompass` storage. Uploaded revision configuration remains in `output/`. Put Confluence settings in `backend/.env`; never commit credentials. Run backend tests from `backend/` with `python -m pytest`.
