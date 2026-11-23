@@ -11,7 +11,8 @@ class ConfigurationService:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.storage_file = self.output_dir / "procman_configuration.json"
 
-    def upload_configuration(self, xml_content: bytes) -> dict:
+    @staticmethod
+    def parse_configuration(xml_content: bytes) -> dict:
         try:
             root = ET.fromstring(xml_content)
         except ET.ParseError as exc:
@@ -52,6 +53,10 @@ class ConfigurationService:
         if not pages:
             raise ValueError("The XML file does not contain any valid pages.")
 
+        return pages
+
+    def upload_configuration(self, xml_content: bytes) -> dict:
+        pages = self.parse_configuration(xml_content)
         data = {"pages": pages}
 
         self.storage_file.write_text(
