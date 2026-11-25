@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { fetchComparisonHistory } from "./api";
+import { comparisonLabel as getComparisonName } from "./comparisonLabels";
 import "./App.css";
 
 /* =========================================================
@@ -24,18 +25,6 @@ const ITEMS_PER_PAGE = 10;
 /* =========================================================
    HELPER FUNCTIONS
    ========================================================= */
-
-function getComparisonName(item) {
-    return (
-        item.comparison_name ||
-        item.comparisonName ||
-        item.name ||
-        item.title ||
-        `${item.old_revision || item.source_revision || "Previous version"} vs ${
-            item.new_revision || item.target_revision || "Latest version"
-        }`
-    );
-}
 
 function getComparisonDate(item) {
     return (

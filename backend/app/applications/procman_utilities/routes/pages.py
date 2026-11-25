@@ -41,8 +41,6 @@ async def get_child_pages(page_id: str):
         )
         for x in rows
     ]
-
-
 @router.get("/{page_id}/html")
 async def get_page_html(page_id: str):
     html = await ConfluenceClient().get_page_body(page_id)

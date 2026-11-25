@@ -1,9 +1,6 @@
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 
 import {
-  LayoutDashboard,
-  Settings,
   ChevronRight,
   Layers,
   FileSpreadsheet,
@@ -25,6 +22,9 @@ import boschLine from "./assests/BoschSC.png";
 import compareIcon from "./assests/compare.png";
 import downloadIcon from "./assests/download.png";
 import historyIcon from "./assests/history.png";
+import homeIcon from "./assests/home.png";
+import infoIcon from "./assests/info-i.png";
+import { comparisonLabel, versionLabel } from "./comparisonLabels";
 
 import {
   fetchConfig,
@@ -34,6 +34,7 @@ import {
   runComparison,
   fetchRecentComparisons,
   fetchComparisonHistory,
+  downloadHistoricalComparison,
 } from "./api";
 
 const compareVersions = (a, b) => {
@@ -49,8 +50,22 @@ const compareVersions = (a, b) => {
   return 0;
 };
 
+function subscribeToView(onChange) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
+function currentView() {
+  const view = window.location.hash.slice(1);
+  return view === "history" || view === "info" ? view : "home";
+}
+
+function navigateTo(view) {
+  window.location.hash = view;
+}
+
 function App() {
-  const [activeView, setActiveView] = useState("dashboard");
+  const activeView = useSyncExternalStore(subscribeToView, currentView);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const workflow = useRef(null);
@@ -72,8 +87,7 @@ function App() {
   const [revisions, setRevisions] = useState([]);
   const [selectedRevisions, setSelectedRevisions] = useState([]);
 
-  const [loadingConfig, setLoadingConfig] = useState(true);
-  const [loadingHierarchy, setLoadingHierarchy] = useState(true);
+  const [loadingHierarchy, setLoadingHierarchy] = useState("landscapes");
   const [loadingCompare, setLoadingCompare] = useState(false);
   const [loadingRevisions, setLoadingRevisions] = useState(false);
 
@@ -104,8 +118,6 @@ function App() {
     let mounted = true;
 
     const loadConfig = async () => {
-      setLoadingConfig(true);
-
       try {
         const rows = await fetchConfig();
 
@@ -125,10 +137,6 @@ function App() {
           setConfigError(
             err.message || "Failed to load process configuration."
           );
-        }
-      } finally {
-        if (mounted) {
-          setLoadingConfig(false);
         }
       }
     };
@@ -169,7 +177,7 @@ function App() {
       })
       .finally(() => {
         if (mounted) {
-          setLoadingHierarchy(false);
+          setLoadingHierarchy("");
         }
       });
 
@@ -213,7 +221,7 @@ function App() {
       console.error("Comparison history loading failed:", err);
 
       setHistoryError(
-        err.message || "Unable to load comparison history."
+        err.message || "Unable to load comparison records."
       );
 
       setComparisonHistory([]);
@@ -223,7 +231,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (activeView === "dashboard") {
+    if (activeView === "home") {
       loadRecentComparisons();
     }
 
@@ -255,6 +263,7 @@ function App() {
 
     if (!pageId) {
       setRevisions([]);
+      setLoadingRevisions(false);
       return;
     }
 
@@ -315,7 +324,7 @@ function App() {
 
       setRevisions([]);
       setError(
-        err.message || "Failed to load revisions for this process."
+        err.message || "Failed to load versions for this process."
       );
     } finally {
       if (requestId === revisionRequest.current) {
@@ -349,12 +358,10 @@ function App() {
     setError("");
     setHierarchyError("");
 
-    if (!pageId) {
-      setRevisions([]);
-      return;
-    }
-
-    setLoadingHierarchy(true);
+    setRevisions([]);
+    setLoadingRevisions(false);
+    setLoadingHierarchy(pageId ? "processes" : "");
+    if (!pageId) return;
 
     try {
       const pages = await fetchChildPages(pageId);
@@ -375,7 +382,7 @@ function App() {
       );
     } finally {
       if (requestId === hierarchyRequest.current) {
-        setLoadingHierarchy(false);
+        setLoadingHierarchy("");
       }
     }
   };
@@ -403,9 +410,9 @@ function App() {
     setError("");
     setHierarchyError("");
 
+    setLoadingRevisions(false);
+    setLoadingHierarchy(pageId ? "methods" : "");
     if (!pageId) return;
-
-    setLoadingHierarchy(true);
 
     try {
       const pages = await fetchChildPages(pageId);
@@ -426,7 +433,7 @@ function App() {
       );
     } finally {
       if (requestId === hierarchyRequest.current) {
-        setLoadingHierarchy(false);
+        setLoadingHierarchy("");
       }
     }
   };
@@ -528,10 +535,10 @@ function App() {
       setDownloadName(
         `DeltaProView_${selectedMethodName
           .split(" ")[0]
-          .replace(/[^a-zA-Z0-9._-]/g, "")}_v${oldRev.version}_vs_v${newRev.version}.xlsx`
+          .replace(/[^a-zA-Z0-9._-]/g, "")}_${versionLabel(oldRev.version)}_vs_${versionLabel(newRev.version)}.xlsx`
       );
 
-      if (activeView === "dashboard") {
+      if (activeView === "home") {
         loadRecentComparisons();
       }
     } catch (err) {
@@ -552,14 +559,12 @@ function App() {
   // DOWNLOAD CURRENT REPORT
   // --------------------------------------------------
 
-  const handleDownload = () => {
-    if (!downloadBlob) return;
-
-    const url = window.URL.createObjectURL(downloadBlob);
+  const saveReport = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = downloadName;
+    link.download = filename;
 
     document.body.appendChild(link);
     link.click();
@@ -573,7 +578,13 @@ function App() {
   // --------------------------------------------------
 
   const handleHistoryDownload = async (comparison) => {
-    console.log("Historical report selected:", comparison);
+    setHistoryError("");
+    try {
+      const blob = await downloadHistoricalComparison(comparison.id || comparison.comparison_id);
+      saveReport(blob, comparison.report_filename || `${comparisonLabel(comparison)}.xlsx`);
+    } catch (err) {
+      setHistoryError(err.message || "Unable to download this report.");
+    }
   };
 
   // --------------------------------------------------
@@ -629,7 +640,7 @@ function App() {
   // HISTORY TABLE
   // --------------------------------------------------
 
-  const renderHistoryTable = (items, compact = false) => {
+  const renderHistoryTable = (items) => {
     if (!items.length) {
       return (
         <div className="empty-history">
@@ -651,7 +662,6 @@ function App() {
               <th>Comparison</th>
               <th>Date &amp; Time</th>
               <th>Status</th>
-              {!compact && <th>Changes Found</th>}
               <th>Action</th>
             </tr>
           </thead>
@@ -662,12 +672,7 @@ function App() {
               const isSuccessful =
                 status === "success" || status === "completed";
 
-              const comparisonName =
-                item.comparison_name ||
-                item.name ||
-                (item.page_name
-                  ? `${item.page_name} (${item.source_version || "—"} vs ${item.target_version || "—"})`
-                  : "Version comparison");
+              const comparisonName = comparisonLabel(item);
 
               return (
                 <tr key={item.id || item.comparison_id}>
@@ -696,12 +701,6 @@ function App() {
                     </span>
                   </td>
 
-                  {!compact && (
-                    <td>
-                      {item.changes_found ?? "—"}
-                    </td>
-                  )}
-
                   <td>
                     <button
                       type="button"
@@ -727,18 +726,14 @@ function App() {
   // DASHBOARD
   // --------------------------------------------------
 
-  const renderDashboard = () => (
+  const renderHome = () => (
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow process-engineering-label">
-            PROCESS ENGINEERING
-          </div>
-
-          <h2>Dashboard</h2>
+          <h2>Process Engineering</h2>
 
           <p>
-            Select process revisions and generate a comparison report.
+            Generate a comparison report.
           </p>
         </div>
       </div>
@@ -765,10 +760,11 @@ function App() {
               id="compare-landscape"
               value={selectedRootId}
               onChange={(e) => handleRootChange(e.target.value)}
-              disabled={loadingHierarchy}
+              disabled={!rootPages.length}
+              aria-busy={loadingHierarchy === "landscapes"}
             >
               <option value="">
-                {loadingHierarchy
+                {loadingHierarchy === "landscapes"
                   ? "Loading..."
                   : "-- Select Process Landscape --"}
               </option>
@@ -790,9 +786,10 @@ function App() {
               id="compare-process"
               value={selectedPSId}
               onChange={(e) => handlePSL2Change(e.target.value)}
-              disabled={!selectedRootId || loadingHierarchy}
+              disabled={!selectedRootId}
+              aria-busy={loadingHierarchy === "processes"}
             >
-              <option value="">-- Select Process --</option>
+              <option value="">{loadingHierarchy === "processes" ? "Loading processes..." : "-- Select Process --"}</option>
 
               {level2Options.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -811,17 +808,13 @@ function App() {
               id="compare-method"
               value={selectedMethodId}
               onChange={(e) => handleMethodChange(e.target.value)}
-              disabled={
-                !selectedPSId ||
-                loadingHierarchy ||
-                loadingConfig ||
-                methodOptions.length === 0
-              }
+              disabled={!selectedPSId}
+              aria-busy={loadingHierarchy === "methods"}
             >
               <option value="">
-                {loadingConfig
+                {loadingHierarchy === "methods"
                   ? "Loading methods..."
-                  : methodOptions.length
+                  : !selectedPSId || methodOptions.length
                     ? "-- Select Method --"
                     : "No methods available"}
               </option>
@@ -853,12 +846,12 @@ function App() {
       {selectedMethodId && (
         <section className="content-card">
           <div className="section-heading">
-            <div className="section-icon red-icon">
+            <div className="section-icon">
               <FileSpreadsheet size={20} />
             </div>
 
             <div>
-              <h3>Select Revisions</h3>
+              <h3>Select Versions</h3>
               <p>
                 Choose exactly two versions to compare.
               </p>
@@ -871,7 +864,7 @@ function App() {
 
           {loadingRevisions ? (
             <div className="empty-state">
-              Loading revisions...
+              Loading versions...
             </div>
           ) : revisions.length > 0 ? (
             <div className="revision-list">
@@ -894,9 +887,7 @@ function App() {
                     />
 
                     <span className="revision-name">
-                      {revision.isPublished
-                        ? "Published"
-                        : `Version ${revision.version}`}
+                      {versionLabel(revision.version)}
                     </span>
 
                     <span className="revision-id">
@@ -908,22 +899,18 @@ function App() {
             </div>
           ) : (
             <div className="empty-state">
-              No revisions are available for this process.
+              No versions are available for this process.
             </div>
           )}
 
-          {revisions.length > 0 && (
+          {selectedRevisions.length === 2 && (
             <div className="action-area">
               <div className="action-info" role="status">
                 {loadingCompare && (
                   <RefreshCw size={17} className="spin" />
                 )}
 
-                {loadingCompare
-                  ? stage
-                  : selectedRevisions.length < 2
-                    ? "Select two revisions to continue."
-                    : ""}
+                {loadingCompare && stage}
               </div>
 
               <div className="action-buttons">
@@ -947,7 +934,7 @@ function App() {
                   <button
                     type="button"
                     className="download-button"
-                    onClick={handleDownload}
+                    onClick={() => saveReport(downloadBlob, downloadName)}
                   >
                     <img
                       src={downloadIcon}
@@ -987,26 +974,26 @@ function App() {
           </div>
 
           <div>
-            <h3>Recent Comparisons</h3>
-            <p>Your three most recent comparisons.</p>
+            <h3>Last Three Comparisons</h3>
           </div>
 
           <button
             type="button"
             className="view-all-button"
-            onClick={() => setActiveView("history")}
+            onClick={() => navigateTo("history")}
           >
             View all
             <ChevronRight size={16} />
           </button>
         </div>
 
+        {historyError && <div className="error-message" role="alert">{historyError}</div>}
         {loadingRecent ? (
           <div className="empty-state">
             Loading recent comparisons...
           </div>
         ) : (
-          renderHistoryTable(recentComparisons, true)
+          renderHistoryTable(recentComparisons)
         )}
       </section>
     </>
@@ -1020,8 +1007,7 @@ function App() {
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">COMPARISON RECORDS</div>
-          <h2>History</h2>
+          <h2>Comparison Records</h2>
           <p>
             View and access your previous version comparisons.
           </p>
@@ -1068,10 +1054,10 @@ function App() {
 
         {loadingHistory ? (
           <div className="empty-state">
-            Loading comparison history...
+            Loading comparison records...
           </div>
         ) : (
-          renderHistoryTable(comparisonHistory, false)
+          renderHistoryTable(comparisonHistory)
         )}
       </section>
     </>
@@ -1081,44 +1067,29 @@ function App() {
   // SETTINGS PAGE
   // --------------------------------------------------
 
-  const renderSettings = () => (
+  const renderInfo = () => (
     <>
       <div className="page-heading">
-        <div>
-          <div className="eyebrow">APPLICATION INFORMATION</div>
-          <h2>Settings</h2>
-          <p>Application information and configuration.</p>
-        </div>
+        <h2>Application Information</h2>
       </div>
 
-      <section className="content-card">
-        <div className="section-heading">
-          <div className="section-icon">
-            <Info size={20} />
-          </div>
-
+      <section className="info-guide" aria-labelledby="about-title">
+        <header className="info-intro">
+          <div className="section-icon"><Info size={20} /></div>
           <div>
-            <h3>About DeltaProView</h3>
-            <p>Application information.</p>
+            <h3 id="about-title">About DeltaProView</h3>
+            <p>DeltaProView compares two versions of a Process Compass method. Use it to review what changed since an earlier release or to trace changes between two past releases.</p>
           </div>
-        </div>
-
-        <div className="settings-information">
-          <div>
-            <span>Application</span>
-            <strong>DeltaProView</strong>
-          </div>
-
-          <div>
-            <span>Description</span>
-            <strong>Compass Version Comparer</strong>
-          </div>
-
-          <div>
-            <span>Organization</span>
-            <strong>Robert Bosch GmbH</strong>
-          </div>
-        </div>
+        </header>
+        <section className="info-workflow">
+            <h3>From method to report</h3>
+            <ol className="info-steps">
+              <li><h4>Find the method</h4><p>On Home, select the process landscape, then the process. Choose the method whose versions you want to review.</p></li>
+              <li><h4>Choose the versions</h4><p>Select <strong>Latest Version</strong> and a numbered release to compare against the current method. To review an earlier change, select two numbered releases instead.</p></li>
+              <li><h4>Generate the workbook</h4><p>Choose <strong>Compare</strong>. When the comparison finishes, select <strong>Download Excel</strong> to save the report for that version pair.</p></li>
+            </ol>
+            <button type="button" className="refresh-button" onClick={() => navigateTo("home")}>Select a method <ChevronRight size={16} /></button>
+        </section>
       </section>
     </>
   );
@@ -1171,15 +1142,15 @@ function App() {
             <button
               type="button"
               className={`nav-item ${
-                activeView === "dashboard" ? "active" : ""
+                activeView === "home" ? "active" : ""
               }`}
               onClick={() => {
-                setActiveView("dashboard");
+                navigateTo("home");
                 setSidebarOpen(false);
               }}
             >
-              <LayoutDashboard size={20} />
-              <span>Dashboard</span>
+              <img src={homeIcon} alt="" className="nav-image-icon" />
+              <span>Home</span>
             </button>
 
             <button
@@ -1188,7 +1159,7 @@ function App() {
                 activeView === "history" ? "active" : ""
               }`}
               onClick={() => {
-                setActiveView("history");
+                navigateTo("history");
                 setSidebarOpen(false);
               }}
             >
@@ -1203,15 +1174,15 @@ function App() {
             <button
               type="button"
               className={`nav-item ${
-                activeView === "settings" ? "active" : ""
+                activeView === "info" ? "active" : ""
               }`}
               onClick={() => {
-                setActiveView("settings");
+                navigateTo("info");
                 setSidebarOpen(false);
               }}
             >
-              <Settings size={20} />
-              <span>Settings</span>
+              <img src={infoIcon} alt="" className="nav-image-icon" />
+              <span>Info</span>
             </button>
           </nav>
         </aside>
@@ -1226,9 +1197,9 @@ function App() {
         )}
 
         <main className="main-content">
-          {activeView === "dashboard" && renderDashboard()}
+          {activeView === "home" && renderHome()}
           {activeView === "history" && renderHistory()}
-          {activeView === "settings" && renderSettings()}
+          {activeView === "info" && renderInfo()}
         </main>
       </div>
 

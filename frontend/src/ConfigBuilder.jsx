@@ -233,7 +233,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
       setError(
         err.message ||
-        "Could not upload the revision configuration."
+        "Could not upload the version configuration."
       );
 
     } finally {
@@ -279,7 +279,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
           <h2>Configuration Tools</h2>
 
           <p>
-            Manage revision configuration and generate
+            Manage version configuration and generate
             Process Compass page tree files.
           </p>
 
@@ -313,7 +313,7 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
             <GitBranch size={17} />
 
-            Revision configuration
+            Version configuration
 
           </button>
 
@@ -356,13 +356,13 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
             <h3>
               {mode === "revision"
-                ? "Revision configuration"
+                ? "Version configuration"
                 : "Process Selection"}
             </h3>
 
             <p>
               {mode === "revision"
-                ? "Upload an existing revision configuration XML file."
+                ? "Upload an existing version configuration XML file."
                 : "Choose a process to generate its Compass page tree."}
             </p>
 
@@ -387,11 +387,11 @@ function ConfigBuilder({ onConfigurationUpdated }) {
 
               <div className="config-upload-text">
 
-                <h4>Upload revision configuration</h4>
+                <h4>Upload version configuration</h4>
 
                 <p>
                   Select the XML configuration file to activate
-                  the revision configuration.
+                  the version configuration.
                 </p>
 
               </div>
