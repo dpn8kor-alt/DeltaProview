@@ -68,6 +68,19 @@ function App() {
   const activeView = useSyncExternalStore(subscribeToView, currentView);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [sidebarOpen]);
+
   const workflow = useRef(null);
   const hierarchyRequest = useRef(0);
   const revisionRequest = useRef(0);
@@ -1067,32 +1080,162 @@ function App() {
   // SETTINGS PAGE
   // --------------------------------------------------
 
-  const renderInfo = () => (
-    <>
-      <div className="page-heading">
+
+const renderInfo = () => (
+  <div className="info-page">
+    <div className="page-heading">
+      <div>
         <h2>Application Information</h2>
+        <p>
+          Everything you need to know about using DeltaProView.
+        </p>
+      </div>
+    </div>
+
+    <section className="info-guide">
+
+      {/* About Section */}
+      <div className="info-intro">
+        <div className="info-intro-icon">
+          <Info size={23} />
+        </div>
+
+        <div className="info-intro-content">
+          <span className="info-eyebrow">OVERVIEW</span>
+          <h3>About DeltaProView</h3>
+          <p>
+            DeltaProView is a Process Compass version comparison
+            tool designed to simplify the review of changes
+            between different releases of a method.
+          </p>
+          <p>
+            It helps you identify modifications, review historical
+            changes and generate a structured Excel report
+            without manually comparing individual versions.
+          </p>
+        </div>
       </div>
 
-      <section className="info-guide" aria-labelledby="about-title">
-        <header className="info-intro">
-          <div className="section-icon"><Info size={20} /></div>
-          <div>
-            <h3 id="about-title">About DeltaProView</h3>
-            <p>DeltaProView compares two versions of a Process Compass method. Use it to review what changed since an earlier release or to trace changes between two past releases.</p>
+      <div className="info-divider" />
+
+      {/* Workflow Section */}
+      <div className="info-workflow">
+
+        <div className="info-section-heading">
+          <span className="info-eyebrow">QUICK GUIDE</span>
+          <h3>From method to report</h3>
+          <p>
+            Follow these three simple steps to generate
+            your comparison report.
+          </p>
+        </div>
+
+        <div className="info-steps">
+
+          <div className="info-step">
+            <div className="info-step-number">01</div>
+            <div className="info-step-content">
+              <h4>Find the method</h4>
+              <p>
+                Navigate to Home and select the required
+                <strong> Process Landscape</strong>, followed by
+                the <strong>Process</strong>. Choose the method
+                whose versions you want to review.
+              </p>
+            </div>
           </div>
-        </header>
-        <section className="info-workflow">
-            <h3>From method to report</h3>
-            <ol className="info-steps">
-              <li><h4>Find the method</h4><p>On Home, select the process landscape, then the process. Choose the method whose versions you want to review.</p></li>
-              <li><h4>Choose the versions</h4><p>Select <strong>Latest Version</strong> and a numbered release to compare against the current method. To review an earlier change, select two numbered releases instead.</p></li>
-              <li><h4>Generate the workbook</h4><p>Choose <strong>Compare</strong>. When the comparison finishes, select <strong>Download Excel</strong> to save the report for that version pair.</p></li>
-            </ol>
-            <button type="button" className="refresh-button" onClick={() => navigateTo("home")}>Select a method <ChevronRight size={16} /></button>
-        </section>
-      </section>
-    </>
-  );
+
+          <div className="info-step">
+            <div className="info-step-number">02</div>
+            <div className="info-step-content">
+              <h4>Choose the versions</h4>
+              <p>
+                Select exactly two versions for comparison.
+                Choose <strong>Latest Version</strong> and a
+                numbered release to review changes against
+                the current method, or select two numbered
+                releases to review historical changes.
+              </p>
+            </div>
+          </div>
+
+          <div className="info-step">
+            <div className="info-step-number">03</div>
+            <div className="info-step-content">
+              <h4>Generate the workbook</h4>
+              <p>
+                Click <strong>Compare</strong> to start the
+                comparison. Once completed, select
+                <strong> Download Excel</strong> to save the
+                generated report for the selected version pair.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div className="info-divider" />
+
+      {/* Version Selection Section */}
+      <div className="info-version-section">
+        <div className="info-version-icon">
+          <FileSpreadsheet size={21} />
+        </div>
+
+        <div>
+          <h3>Understanding version selection</h3>
+          <p>
+            DeltaProView supports two comparison scenarios:
+          </p>
+
+          <div className="info-version-options">
+            <div className="info-version-option">
+              <span className="info-version-label">
+                CURRENT REVIEW
+              </span>
+              <strong>Latest Version vs. Numbered Release</strong>
+              <p>
+                Review what has changed in the latest published
+                method compared with an earlier release.
+              </p>
+            </div>
+
+            <div className="info-version-option">
+              <span className="info-version-label">
+                HISTORICAL REVIEW
+              </span>
+              <strong>Numbered Release vs. Numbered Release</strong>
+              <p>
+                Trace changes between any two available
+                numbered releases.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Action */}
+      <div className="info-bottom-action">
+        <div>
+          <h4>Ready to get started?</h4>
+          <p>Go to Home and select a method to begin.</p>
+        </div>
+
+        <button
+          type="button"
+          className="info-start-button"
+          onClick={() => navigateTo("home")}
+        >
+          Select a method
+          <ChevronRight size={17} />
+        </button>
+      </div>
+
+    </section>
+  </div>
+);
+
 
   // --------------------------------------------------
   // MAIN UI
@@ -1105,8 +1248,10 @@ function App() {
           <button
             type="button"
             className="mobile-menu-button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => setSidebarOpen((open) => !open)}
             aria-label="Toggle navigation"
+            aria-controls="primary-navigation"
+            aria-expanded={sidebarOpen}
           >
             {sidebarOpen ? <X /> : <Menu />}
           </button>
@@ -1134,9 +1279,11 @@ function App() {
 
       <div className="app-body">
         <aside
+          id="primary-navigation"
           className={`sidebar ${
             sidebarOpen ? "sidebar-open" : ""
           }`}
+          aria-label="Primary navigation"
         >
           <nav className="sidebar-navigation">
             <button
@@ -1144,6 +1291,7 @@ function App() {
               className={`nav-item ${
                 activeView === "home" ? "active" : ""
               }`}
+              aria-current={activeView === "home" ? "page" : undefined}
               onClick={() => {
                 navigateTo("home");
                 setSidebarOpen(false);
@@ -1158,6 +1306,7 @@ function App() {
               className={`nav-item ${
                 activeView === "history" ? "active" : ""
               }`}
+              aria-current={activeView === "history" ? "page" : undefined}
               onClick={() => {
                 navigateTo("history");
                 setSidebarOpen(false);
@@ -1176,6 +1325,7 @@ function App() {
               className={`nav-item ${
                 activeView === "info" ? "active" : ""
               }`}
+              aria-current={activeView === "info" ? "page" : undefined}
               onClick={() => {
                 navigateTo("info");
                 setSidebarOpen(false);
